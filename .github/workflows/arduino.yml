@@ -8,7 +8,7 @@ jobs:
     
     strategy:
       matrix:
-        board: [esp32dev, nodemcu]
+        platform: [esp32, esp8266]
     
     steps:
     - uses: actions/checkout@v4
@@ -18,10 +18,23 @@ jobs:
       with:
         enable-ini-overrides: true
         
-    - name: Install ESP32 Board
+    - name: Install Boards
       run: |
         arduino-cli core update-index
         arduino-cli core install esp32:esp32
+        arduino-cli core install esp8266:esp8266
     
-    - name: Compile ESP-IoT-WebControl
-      run: arduino-cli compile --fqbn esp32:esp32:esp32dev ESP-IoT-WebControl.ino
+    - name: Install Libraries
+      run: |
+        arduino-cli lib update-index
+        arduino-cli lib install "ESPAsyncWebServer@1.2.3"
+        arduino-cli lib install "AsyncTCP@1.1.1"
+    
+    - name:  Compile main.ino for ESP32
+      run: arduino-cli compile --fqbn esp32:esp32:esp32dev main.ino
+    
+    - name:  Compile main.ino for ESP8266
+      run: arduino-cli compile --fqbn esp8266:esp8266:nodemcuv2 main.ino
+    
+    - name:  Show sketch size
+      run: arduino-cli compile --fqbn esp32:esp32:esp32dev main.ino --verbose
