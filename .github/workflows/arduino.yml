@@ -18,23 +18,27 @@ jobs:
       with:
         enable-ini-overrides: true
         
-    - name: Install Boards
+    #  FIX: ESP8266 board manager URL
+    - name: Add ESP8266 Boards URL
+      run: arduino-cli config add board_manager.additional_urls https://arduino.esp8266.com/stable/package_esp8266com_index.json
+    
+    - name: Install ESP Boards
       run: |
         arduino-cli core update-index
         arduino-cli core install esp32:esp32
         arduino-cli core install esp8266:esp8266
-    
+        
     - name: Install Libraries
       run: |
         arduino-cli lib update-index
         arduino-cli lib install "ESPAsyncWebServer@1.2.3"
         arduino-cli lib install "AsyncTCP@1.1.1"
     
-    - name:  Compile main.ino for ESP32
+    - name:  Compile main.ino - ESP32
       run: arduino-cli compile --fqbn esp32:esp32:esp32dev main.ino
     
-    - name:  Compile main.ino for ESP8266
+    - name:  Compile main.ino - ESP8266 NodeMCU
       run: arduino-cli compile --fqbn esp8266:esp8266:nodemcuv2 main.ino
     
-    - name:  Show sketch size
+    - name:  Sketch Info
       run: arduino-cli compile --fqbn esp32:esp32:esp32dev main.ino --verbose
