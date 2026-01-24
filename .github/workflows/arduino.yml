@@ -13,45 +13,45 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     
-    # ✅ FIX 1: Force config directory + empty YAML
+    # ✅ Config directory fix
     - name: Initialize Arduino CLI Config
       run: |
         mkdir -p /home/runner/.arduino15
         echo "{}" > /home/runner/.arduino15/arduino-cli.yaml
     
-    # ✅ FIX 2: Setup with CLI version pinning
+    # ✅ Arduino CLI setup
     - name: Setup Arduino CLI
       uses: arduino/setup-arduino-cli@v1
       with:
         enable-ini-overrides: true
         
-    # ✅ FIX 3: ESP8266 URL + ESP32 URL explicitly
+    # ✅ Board URLs (both ESP32 + ESP8266)
     - name: Add Board Manager URLs
       run: |
         arduino-cli config add board_manager.additional_urls https://arduino.esp8266.com/stable/package_esp8266com_index.json
         arduino-cli config add board_manager.additional_urls https://espressif.github.io/arduino-esp32/package_esp32_index.json
     
-    # ✅ FIX 4: Update index + install
+    # ✅ Update & install boards
     - name: Install ESP Boards
       run: |
         arduino-cli core update-index
         arduino-cli core install esp32:esp32
         arduino-cli core install esp8266:esp8266
         
-    # ✅ Libraries with exact versions
-    - name: Install Libraries
+    # ✅ FIX: Git install for ESPAsync libs (not in Library Manager)
+    - name: Install ESPAsync Libraries (Git)
       run: |
-        arduino-cli lib update-index
-        arduino-cli lib install "ESPAsyncWebServer@1.2.3"
-        arduino-cli lib install "AsyncTCP@1.1.1"
+        arduino-cli lib install --git-url https://github.com/me-no-dev/ESPAsyncWebServer.git
+        arduino-cli lib install --git-url https://github.com/me-no-dev/AsyncTCP.git
     
-    # ✅ Compile steps
-    - name: Compile main.ino - ESP32 Dev Module
+    # ✅ Compile ESP32
+    - name: Compile main.ino - ESP32
       run: arduino-cli compile --fqbn esp32:esp32:esp32dev main.ino
     
-    - name: Compile main.ino - ESP8266 NodeMCU v2
+    # ✅ Compile ESP8266
+    - name: Compile main.ino - ESP8266
       run: arduino-cli compile --fqbn esp8266:esp8266:nodemcuv2 main.ino
     
     # ✅ Size report
-    - name: Sketch Size Report
+    - name: Sketch Size
       run: arduino-cli compile --fqbn esp32:esp32:esp32dev main.ino
