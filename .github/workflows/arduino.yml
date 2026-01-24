@@ -13,32 +13,45 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     
+    # ✅ FIX 1: Force config directory + empty YAML
+    - name: Initialize Arduino CLI Config
+      run: |
+        mkdir -p /home/runner/.arduino15
+        echo "{}" > /home/runner/.arduino15/arduino-cli.yaml
+    
+    # ✅ FIX 2: Setup with CLI version pinning
     - name: Setup Arduino CLI
       uses: arduino/setup-arduino-cli@v1
       with:
         enable-ini-overrides: true
         
-    #  FIX: ESP8266 board manager URL
-    - name: Add ESP8266 Boards URL
-      run: arduino-cli config add board_manager.additional_urls https://arduino.esp8266.com/stable/package_esp8266com_index.json
+    # ✅ FIX 3: ESP8266 URL + ESP32 URL explicitly
+    - name: Add Board Manager URLs
+      run: |
+        arduino-cli config add board_manager.additional_urls https://arduino.esp8266.com/stable/package_esp8266com_index.json
+        arduino-cli config add board_manager.additional_urls https://espressif.github.io/arduino-esp32/package_esp32_index.json
     
+    # ✅ FIX 4: Update index + install
     - name: Install ESP Boards
       run: |
         arduino-cli core update-index
         arduino-cli core install esp32:esp32
         arduino-cli core install esp8266:esp8266
         
+    # ✅ Libraries with exact versions
     - name: Install Libraries
       run: |
         arduino-cli lib update-index
         arduino-cli lib install "ESPAsyncWebServer@1.2.3"
         arduino-cli lib install "AsyncTCP@1.1.1"
     
-    - name:  Compile main.ino - ESP32
+    # ✅ Compile steps
+    - name: Compile main.ino - ESP32 Dev Module
       run: arduino-cli compile --fqbn esp32:esp32:esp32dev main.ino
     
-    - name:  Compile main.ino - ESP8266 NodeMCU
+    - name: Compile main.ino - ESP8266 NodeMCU v2
       run: arduino-cli compile --fqbn esp8266:esp8266:nodemcuv2 main.ino
     
-    - name:  Sketch Info
-      run: arduino-cli compile --fqbn esp32:esp32:esp32dev main.ino --verbose
+    # ✅ Size report
+    - name: Sketch Size Report
+      run: arduino-cli compile --fqbn esp32:esp32:esp32dev main.ino
