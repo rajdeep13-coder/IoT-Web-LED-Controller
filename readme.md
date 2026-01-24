@@ -1,6 +1,6 @@
 # IoT Web LED Controller
 
-[![ESP32 Build](https://github.com/IoT-Core-Engineering/ESP-IoT-WebControl/workflows/ESP32%20Build/badge.svg)](https://github.com/IoT-Core-Engineering/ESP-IoT-WebControl/actions)
+[![Arduino CI](https://github.com/rajdeep13-coder/IoT-Web-LED-Controller/workflows/Arduino%20CI/badge.svg?branch=main)](https://github.com/rajdeep13-coder/IoT-Web-LED-Controller/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![ESP32](https://img.shields.io/badge/ESP32-Compatible-blue.svg)](https://www.espressif.com/en/products/socs/esp32)
 [![ESP8266](https://img.shields.io/badge/ESP8266-Compatible-blue.svg)](https://www.espressif.com/en/products/socs/esp8266)
