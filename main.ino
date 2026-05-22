@@ -7,24 +7,36 @@
 #endif
 #include <ESPAsyncWebServer.h>
 
-const char* ssid = "XXXXXXXX";   // Replace with your network SSID
-const char* password = "69696969"; // Replace with your network password
-
-const char* http_username = "admin";
-const char* http_password = "admin";
+#include "config.h"
 
 const int output = 2;
 AsyncWebServer server(80);
 void handleUpdate(AsyncWebServerRequest *request) {
   if(!request->authenticate(http_username, http_password))
     return request->requestAuthentication();
-    
-  if (request->hasParam("input_1")) {
-    int value = request->getParam("input_1")->value().toInt();
-    digitalWrite(output, value);
-    Serial.println("LED: " + String(value));
+
+  if (!request->hasParam("plain", true)) {
+    request->send(400, "text/plain", "Missing JSON body");
+    return;
   }
-  request->send(200, "text/plain", "OK");
+
+  String body = request->getParam("plain", true)->value();
+  int keyIndex = body.indexOf("\"input_1\"");
+  if (keyIndex < 0) {
+    request->send(400, "text/plain", "Missing input_1");
+    return;
+  }
+
+  int valueIndex = body.indexOf(':', keyIndex);
+  if (valueIndex < 0) {
+    request->send(400, "text/plain", "Invalid JSON body");
+    return;
+  }
+
+  int value = body.substring(valueIndex + 1).toInt();
+  digitalWrite(output, value ? HIGH : LOW);
+  Serial.println("LED: " + String(value));
+  request->send(200, "application/json", "{\"ok\":true}");
 }
 
 String outputState(){
@@ -65,7 +77,7 @@ void setup(){
     request->send_P(200, "text/html", index_html, processor);
   });
 
-  server.on("/update", HTTP_GET, handleUpdate);
+  server.on("/update", HTTP_POST, handleUpdate);
 
   server.begin();
   Serial.println("Server ready!");
@@ -85,5 +97,5 @@ const char index_html[] PROGMEM = R"rawliteral(
   input:checked+.slider{background-color:#2196F3}input:checked+.slider:before{transform:translateX(52px)}</style>
 </head>
 <body><h1>ESP IoT LED</h1><h3>Pin 2: <span id="state"><STATE></span></h3><BUTTONPLACEHOLDER>
-<script>function toggleCheckbox(x){var xhr=new XMLHttpRequest();xhr.open("GET","/update?input_1="+(x.checked?1:0),true);xhr.send();document.getElementById("state").innerText=x.checked?"ON":"OFF";}</script>
+<script>function toggleCheckbox(x){var xhr=new XMLHttpRequest();xhr.open("POST","/update",true);xhr.setRequestHeader("Content-Type","application/json");xhr.send(JSON.stringify({input_1:x.checked?1:0}));document.getElementById("state").innerText=x.checked?"ON":"OFF";}</script>
 </body></html>)rawliteral";

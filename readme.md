@@ -24,6 +24,12 @@ Designed to be:
 
 ---
 
+## Security Notice
+
+This project uses HTTP Basic Authentication over plain HTTP. Basic Auth credentials are only base64-encoded, not encrypted, so they can be sniffed by anyone on the same network. Do not expose this device directly to untrusted networks. If you need stronger protection, place it behind TLS terminated by a reverse proxy or another secure gateway.
+
+---
+
 ## Features
 
 - Asynchronous web server (non-blocking)
