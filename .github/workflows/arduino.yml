@@ -43,6 +43,10 @@ jobs:
       run: |
         arduino-cli lib install --git-url https://github.com/me-no-dev/ESPAsyncWebServer.git
         arduino-cli lib install --git-url https://github.com/me-no-dev/AsyncTCP.git
+
+    # ✅ Create a temporary config.h for CI builds
+    - name: Prepare config for CI
+      run: cp config.example.h config.h
     
     # ✅ Compile ESP32
     - name: Compile main.ino - ESP32
