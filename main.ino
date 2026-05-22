@@ -9,12 +9,25 @@
 
 #include "config.h"
 
-const int output = 2;
 AsyncWebServer server(80);
-void handleUpdate(AsyncWebServerRequest *request) {
-  if(!request->authenticate(http_username, http_password))
-    return request->requestAuthentication();
+bool requireAuth(AsyncWebServerRequest *request) {
+  if (!request->authenticate(http_username, http_password)) {
+    request->requestAuthentication();
+    return false;
+  }
+  return true;
+}
 
+void connectWiFi() {
+  WiFi.begin(ssid, password);
+  unsigned long startTime = millis();
+  while (WiFi.status() != WL_CONNECTED && millis() - startTime < 30000) {
+    delay(1000);
+    DBG_PRINT("Connecting WiFi..");
+  }
+}
+
+void handleUpdate(AsyncWebServerRequest *request) {
   if (!request->hasParam("plain", true)) {
     request->send(400, "text/plain", "Missing JSON body");
     return;
@@ -34,13 +47,14 @@ void handleUpdate(AsyncWebServerRequest *request) {
   }
 
   int value = body.substring(valueIndex + 1).toInt();
-  digitalWrite(output, value ? HIGH : LOW);
-  Serial.println("LED: " + String(value));
+  value = constrain(value, 0, 1);
+  digitalWrite(LED_PIN, value ? HIGH : LOW);
+  DBG_PRINT("LED: " + String(value));
   request->send(200, "application/json", "{\"ok\":true}");
 }
 
 String outputState(){
-  return digitalRead(output) ? "checked" : "";
+  return digitalRead(LED_PIN) ? "checked" : "";
 }
 
 String processor(const String& var){
@@ -48,42 +62,64 @@ String processor(const String& var){
     return "<p><label class=\"switch\"><input type=\"checkbox\" onchange=\"toggleCheckbox(this)\" id=\"output\" " + outputState() + "><span class=\"slider\"></span></label></p>";
   }
   if (var == "STATE"){
-    return digitalRead(output) ? "ON" : "OFF";
+    return digitalRead(LED_PIN) ? "ON" : "OFF";
   }
   return String();
 }
 
 void setup(){
   Serial.begin(115200);
-  pinMode(output, OUTPUT);
-  digitalWrite(output, LOW);
+  pinMode(LED_PIN, OUTPUT);
+  digitalWrite(LED_PIN, LOW);
   
-  WiFi.begin(ssid, password);
-  unsigned long startTime = millis();
-  while (WiFi.status() != WL_CONNECTED && millis() - startTime < 30000) {
-    delay(1000);
-    Serial.println("Connecting WiFi..");
+  for (int attempt = 0; attempt < 3 && WiFi.status() != WL_CONNECTED; attempt++) {
+    connectWiFi();
+    if (WiFi.status() == WL_CONNECTED) {
+      Serial.println("IP: " + WiFi.localIP().toString());
+      break;
+    }
+    if (attempt < 2) {
+      Serial.println("WiFi failed - retrying");
+      delay(5000);
+    }
   }
-  
   if(WiFi.status() == WL_CONNECTED){
-    Serial.println("IP: " + WiFi.localIP().toString());
+    DBG_PRINT("IP: " + WiFi.localIP().toString());
   } else {
-    Serial.println("WiFi failed - restart");
-    ESP.restart();
-  }
-  server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
-    if(!request->authenticate(http_username, http_password))
-      return request->requestAuthentication();
-    request->send_P(200, "text/html", index_html, processor);
+    DBG_PRINT("WiFi failed - retrying");
+    if (!requireAuth(request)) {
+      return;
+    }
+    DBG_PRINT("WiFi unavailable - continuing without restart");
   });
 
-  server.on("/update", HTTP_POST, handleUpdate);
+  server.on("/update", HTTP_POST, [](AsyncWebServerRequest *request){
+    if (!requireAuth(request)) {
+      return;
+    }
+    handleUpdate(request);
+  });
+
+  server.onNotFound([](AsyncWebServerRequest *request){
+    request->send(404, "text/plain", "Not found");
+  });
 
   server.begin();
-  Serial.println("Server ready!");
+  DBG_PRINT("Server ready!");
 }
 
-void loop() {}
+void loop() {
+  static unsigned long lastReconnectAttempt = 0;
+
+  if (WiFi.status() != WL_CONNECTED && millis() - lastReconnectAttempt > 30000) {
+    lastReconnectAttempt = millis();
+    DBG_PRINT("WiFi disconnected - reconnecting");
+    connectWiFi();
+    if (WiFi.status() == WL_CONNECTED) {
+      DBG_PRINT("Reconnected: " + WiFi.localIP().toString());
+    }
+  }
+}
 //html file
 const char index_html[] PROGMEM = R"rawliteral(
 <!DOCTYPE HTML><html>
