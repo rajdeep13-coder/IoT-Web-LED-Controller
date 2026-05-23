@@ -59,7 +59,7 @@ jobs:
       run: |
         sketch_dir="$RUNNER_TEMP/IoT-Web-LED-Controller"
         if [ "${{ matrix.platform }}" = "esp32" ]; then
-          fqbn="esp32:esp32:esp32dev"
+          fqbn="esp32:esp32:esp32"
         else
           fqbn="esp8266:esp8266:nodemcuv2"
         fi
