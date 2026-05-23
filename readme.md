@@ -4,66 +4,102 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![ESP32](https://img.shields.io/badge/ESP32-Compatible-blue.svg)](https://www.espressif.com/en/products/socs/esp32)
 [![ESP8266](https://img.shields.io/badge/ESP8266-Compatible-blue.svg)](https://www.espressif.com/en/products/socs/esp8266)
-[![GitHub stars](https://img.shields.io/github/stars/rajdeep13-coder/IoT-Web-LED-Controller?style=social)](https://github.com/rajdeep13-coder/IoT-Web-LED-Controller/stargazers)
-[![GitHub forks](https://img.shields.io/github/forks/rajdeep13-coder/IoT-Web-LED-Controller?style=social)](https://github.com/rajdeep13-coder/IoT-Web-LED-Controller/network/members)
 
-Control an ESP32 or ESP8266 GPIO pin (LED) directly from a web browser using an asynchronous web server.  
-The project provides real-time LED control with authentication and WiFi fail-safe protection.
+A lightweight web-based LED controller for ESP32 and ESP8266 boards.
 
----
+It serves a clean browser UI from LittleFS, supports authentication, and exposes a small JSON API for state polling and control.
 
-## Overview
+## Highlights
 
-This project demonstrates how to build a lightweight IoT web interface on ESP32/ESP8266 using an asynchronous HTTP server.  
-It allows authenticated users to toggle a GPIO pin (LED) from any browser connected to the same network.
+- Async web server for responsive control
+- LittleFS-hosted UI with separate HTML and CSS
+- `GET /status` JSON endpoint for current pin state
+- `POST /update` for LED toggling
+- mDNS discovery at `esp-led.local`
+- ArduinoOTA support for wireless updates
+- Standalone browser demo for quick presentation
 
-Designed to be:
-- Simple to deploy
-- Fast and non-blocking
-- Easy to extend for real IoT applications
+## Preview
 
----
+If you just want to show the UI without hardware, run the local demo:
 
-## Security Notice
+```bash
+python preview_server.py
+```
 
-This project uses HTTP Basic Authentication over plain HTTP. Basic Auth credentials are only base64-encoded, not encrypted, so they can be sniffed by anyone on the same network. Do not expose this device directly to untrusted networks. If you need stronger protection, place it behind TLS terminated by a reverse proxy or another secure gateway.
+Then open:
 
----
+```text
+http://127.0.0.1:8000/
+```
 
-## Features
+## How It Works
 
-- Asynchronous web server (non-blocking)
-- HTTP Basic Authentication
-- Instant LED state update without page reload
-- ESP32 and ESP8266 compatible
-- WiFi connection timeout protection
-- Single `.ino` file for easy upload
-- Minimal hardware requirements
+The firmware:
 
----
+- connects to Wi-Fi
+- mounts LittleFS
+- serves `index.html` and `style.css`
+- returns LED status as JSON
+- lets you update the pin from the browser
+- keeps OTA and mDNS available on the same network
 
-## Hardware Requirements
+## API
 
-| Component | Pin | Description |
-|---------|-----|------------|
-| ESP32 Dev Board | GPIO 2 | Built-in LED |
-| External LED | GPIO 2 | Optional |
-| Resistor | 220Ω | Current limiting |
-| Jumper Wires | — | Connections |
+### `GET /status`
 
-**Connection:**  
-GPIO 2 → LED → 220Ω resistor → GND
+Returns the current LED state:
 
----
+```json
+{"pin":2,"state":1}
+```
 
-## Software Requirements
+### `POST /update`
 
-- Arduino IDE (latest recommended)
-- ESP32 or ESP8266 board support installed
-- Required libraries:
-  - ESPAsyncWebServer
-  - AsyncTCP (ESP32) or ESPAsyncTCP (ESP8266)
+Sends a state change request to the device.
 
----
+## Hardware
+
+| Component | Connection |
+|---|---|
+| ESP board | Wi-Fi connected |
+| LED | `GPIO 2` |
+| Resistor | `220Ω` |
+| Jumper wires | As needed |
+
+Typical wiring:
+
+```text
+GPIO 2 -> LED -> 220Ω resistor -> GND
+```
+
+## Requirements
+
+- Arduino IDE or Arduino CLI
+- ESP32 or ESP8266 board package
+- Libraries:
+  - `ESPAsyncWebServer`
+  - `AsyncTCP` for ESP32 or `ESPAsyncTCP` for ESP8266
+
+## Configuration
+
+Put your Wi-Fi and auth values in `config.h`.
+
+## Security
+
+This project uses HTTP Basic Authentication over plain HTTP. That is fine for a trusted local network, but it is not encrypted. Do not expose it directly to the public internet.
+
+## Project Layout
+
+- `main.ino` — firmware and routes
+- `config.h` — local secrets and settings
+- `data/index.html` — web UI
+- `data/style.css` — UI styles
+- `preview_server.py` — local browser preview
+- `showcase.html` — standalone demo page
+
+## License
+
+MIT
 
 

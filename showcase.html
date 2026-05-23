@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ESP IoT LED Demo</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      margin: 0 auto;
+      padding-top: 30px;
+      color: #1f2937;
+      background: linear-gradient(180deg, #f8fafc 0%, #eef2f7 100%);
+    }
+
+    .control-panel {
+      margin-top: 24px;
+    }
+
+    .switch-wrap {
+      position: relative;
+      display: inline-block;
+    }
+
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 120px;
+      height: 68px;
+    }
+
+    .switch input {
+      display: none;
+    }
+
+    .switch input:disabled + .slider {
+      opacity: 0.7;
+      cursor: wait;
+    }
+
+    .slider {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: #ccc;
+      border-radius: 34px;
+      transition: background-color 0.2s ease;
+    }
+
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 52px;
+      width: 52px;
+      left: 8px;
+      bottom: 8px;
+      background-color: white;
+      transition: transform 0.4s ease;
+      border-radius: 68px;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+    }
+
+    input:checked + .slider {
+      background-color: #2196F3;
+    }
+
+    input:checked + .slider:before {
+      transform: translateX(52px);
+    }
+
+    .loading-indicator {
+      position: absolute;
+      right: -34px;
+      top: 50%;
+      width: 18px;
+      height: 18px;
+      margin-top: -9px;
+      border: 3px solid rgba(31, 41, 55, 0.2);
+      border-top-color: #2196F3;
+      border-radius: 50%;
+      opacity: 0;
+      animation: spin 0.8s linear infinite;
+    }
+
+    .loading-indicator.visible {
+      opacity: 1;
+    }
+
+    .feedback {
+      min-height: 1.5em;
+      margin: 18px 0 10px;
+      color: #b45309;
+      font-size: 0.95rem;
+    }
+
+    .retry-button {
+      border: 0;
+      border-radius: 999px;
+      padding: 10px 18px;
+      background: #111827;
+      color: #ffffff;
+      font-size: 0.95rem;
+      cursor: pointer;
+    }
+
+    .retry-button.hidden {
+      display: none;
+    }
+
+    .hint {
+      margin-top: 18px;
+      color: #6b7280;
+      font-size: 0.92rem;
+    }
+
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <h1>ESP IoT LED</h1>
+  <h3>Pin 2: <span id="state">OFF</span></h3>
+
+  <div class="control-panel">
+    <div class="switch-wrap">
+      <label class="switch">
+        <input type="checkbox" id="output" />
+        <span class="slider"></span>
+      </label>
+      <span class="loading-indicator" id="loading-indicator" aria-hidden="true"></span>
+    </div>
+    <p class="feedback" id="feedback" role="status" aria-live="polite"></p>
+    <button class="retry-button hidden" id="retry-button" type="button">Retry</button>
+  </div>
+
+  <p class="hint">Standalone browser demo. No ESP board required.</p>
+
+  <script>
+    const stateLabel = document.getElementById('state');
+    const feedback = document.getElementById('feedback');
+    const retryButton = document.getElementById('retry-button');
+    const loadingIndicator = document.getElementById('loading-indicator');
+    const toggle = document.getElementById('output');
+
+    let lastKnownState = false;
+    let pendingState = false;
+    let forceFailure = false;
+
+    function setBusy(isBusy) {
+      toggle.disabled = isBusy;
+      loadingIndicator.classList.toggle('visible', isBusy);
+      if (isBusy) {
+        retryButton.classList.add('hidden');
+        feedback.textContent = 'Updating LED state...';
+      }
+    }
+
+    function setError(message) {
+      feedback.textContent = message;
+      retryButton.classList.remove('hidden');
+    }
+
+    function applyState(isOn) {
+      toggle.checked = isOn;
+      stateLabel.textContent = isOn ? 'ON' : 'OFF';
+      lastKnownState = isOn;
+    }
+
+    async function syncStatus() {
+      setBusy(true);
+      try {
+        await new Promise((resolve) => setTimeout(resolve, 450));
+        applyState(lastKnownState);
+        feedback.textContent = '';
+      } catch (error) {
+        setError('Unable to read the current LED state.');
+      } finally {
+        setBusy(false);
+      }
+    }
+
+    async function sendState(isOn) {
+      pendingState = isOn;
+      setBusy(true);
+      try {
+        await new Promise((resolve, reject) => {
+          setTimeout(() => {
+            if (forceFailure) {
+              reject(new Error('Simulated connection failure'));
+              return;
+            }
+            resolve();
+          }, 750);
+        });
+
+        applyState(isOn);
+        feedback.textContent = '';
+      } catch (error) {
+        applyState(lastKnownState);
+        setError('Update failed. Check the device connection and retry.');
+      } finally {
+        setBusy(false);
+      }
+    }
+
+    toggle.addEventListener('change', function () {
+      sendState(toggle.checked);
+    });
+
+    retryButton.addEventListener('click', function () {
+      sendState(pendingState);
+    });
+
+    syncStatus();
+  </script>
+</body>
+</html>

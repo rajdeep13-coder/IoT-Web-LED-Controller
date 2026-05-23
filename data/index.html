@@ -1,0 +1,97 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+  <title>ESP IoT Control</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <h1>ESP IoT LED</h1>
+  <h3>Pin 2: <span id="state"><STATE></span></h3>
+  <div class="control-panel">
+    <div class="switch-wrap" id="switch-wrap">
+      <BUTTONPLACEHOLDER>
+      <span class="loading-indicator" id="loading-indicator" aria-hidden="true"></span>
+    </div>
+    <p class="feedback" id="feedback" role="status" aria-live="polite"></p>
+    <button class="retry-button hidden" id="retry-button" type="button">Retry</button>
+  </div>
+  <script>
+    const stateLabel = document.getElementById("state");
+    const feedback = document.getElementById("feedback");
+    const retryButton = document.getElementById("retry-button");
+    const loadingIndicator = document.getElementById("loading-indicator");
+    const toggle = document.getElementById("output");
+
+    let lastKnownState = toggle.checked;
+    let pendingState = toggle.checked;
+
+    function setBusy(isBusy) {
+      toggle.disabled = isBusy;
+      loadingIndicator.classList.toggle("visible", isBusy);
+      if (isBusy) {
+        retryButton.classList.add("hidden");
+        feedback.textContent = "Updating LED state...";
+      }
+    }
+
+    function setError(message) {
+      feedback.textContent = message;
+      retryButton.classList.remove("hidden");
+    }
+
+    function applyState(isOn) {
+      toggle.checked = isOn;
+      stateLabel.textContent = isOn ? "ON" : "OFF";
+      lastKnownState = isOn;
+    }
+
+    async function syncStatus() {
+      try {
+        const response = await fetch("/status", { cache: "no-store" });
+        if (!response.ok) {
+          throw new Error("status request failed");
+        }
+        const data = await response.json();
+        applyState(Boolean(data.state));
+      } catch (error) {
+        setError("Unable to read the current LED state.");
+      }
+    }
+
+    async function sendState(isOn) {
+      pendingState = isOn;
+      setBusy(true);
+      try {
+        const response = await fetch("/update", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ input_1: isOn ? 1 : 0 })
+        });
+
+        if (!response.ok) {
+          throw new Error("update failed");
+        }
+
+        applyState(isOn);
+        feedback.textContent = "";
+      } catch (error) {
+        applyState(lastKnownState);
+        setError("Update failed. Check the device connection and retry.");
+      } finally {
+        setBusy(false);
+      }
+    }
+
+    function toggleCheckbox(x) {
+      sendState(x.checked);
+    }
+
+    retryButton.addEventListener("click", function () {
+      sendState(pendingState);
+    });
+
+    syncStatus();
+  </script>
+</body>
+</html>

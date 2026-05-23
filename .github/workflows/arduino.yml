@@ -5,57 +5,62 @@ on: [push, pull_request, workflow_dispatch]
 jobs:
   build:
     runs-on: ubuntu-latest
-    
+
     strategy:
       matrix:
         platform: [esp32, esp8266]
     
     steps:
     - uses: actions/checkout@v4
-    
-    # ✅ Config directory fix
-    - name: Initialize Arduino CLI Config
-      run: |
-        mkdir -p /home/runner/.arduino15
-        echo "{}" > /home/runner/.arduino15/arduino-cli.yaml
-    
-    # ✅ Arduino CLI setup
+
     - name: Setup Arduino CLI
       uses: arduino/setup-arduino-cli@v1
       with:
         enable-ini-overrides: true
-        
-    # ✅ Board URLs (both ESP32 + ESP8266)
+
     - name: Add Board Manager URLs
+      shell: bash
       run: |
         arduino-cli config add board_manager.additional_urls https://arduino.esp8266.com/stable/package_esp8266com_index.json
         arduino-cli config add board_manager.additional_urls https://espressif.github.io/arduino-esp32/package_esp32_index.json
-    
-    # ✅ Update & install boards
+
+    - name: Arduino CLI version
+      shell: bash
+      run: arduino-cli version
+
     - name: Install ESP Boards
+      shell: bash
       run: |
         arduino-cli core update-index
         arduino-cli core install esp32:esp32
         arduino-cli core install esp8266:esp8266
-        
-    # ✅ FIX: Git install for ESPAsync libs (not in Library Manager)
-    - name: Install ESPAsync Libraries (Git)
-      run: |
-        arduino-cli lib install --git-url https://github.com/me-no-dev/ESPAsyncWebServer.git
-        arduino-cli lib install --git-url https://github.com/me-no-dev/AsyncTCP.git
 
-    # ✅ Create a temporary config.h for CI builds
+    - name: Install ESPAsync Libraries
+      shell: bash
+      run: |
+        arduino-cli lib update-index
+        arduino-cli lib install "ESP Async WebServer"
+        if [ "${{ matrix.platform }}" = "esp32" ]; then
+          arduino-cli lib install "AsyncTCP"
+        else
+          arduino-cli lib install "ESP Async TCP"
+        fi
+
     - name: Prepare config for CI
-      run: cp config.example.h config.h
-    
-    # ✅ Compile ESP32
-    - name: Compile main.ino - ESP32
-      run: arduino-cli compile --fqbn esp32:esp32:esp32dev main.ino
-    
-    # ✅ Compile ESP8266
-    - name: Compile main.ino - ESP8266
-      run: arduino-cli compile --fqbn esp8266:esp8266:nodemcuv2 main.ino
-    
-    # ✅ Size report
-    - name: Sketch Size
-      run: arduino-cli compile --fqbn esp32:esp32:esp32dev main.ino
+      shell: bash
+      run: |
+        sketch_dir="$RUNNER_TEMP/IoT-Web-LED-Controller"
+        mkdir -p "$sketch_dir"
+        cp main.ino "$sketch_dir/IoT-Web-LED-Controller.ino"
+        cp config.example.h "$sketch_dir/config.h"
+
+    - name: Compile sketch
+      shell: bash
+      run: |
+        sketch_dir="$RUNNER_TEMP/IoT-Web-LED-Controller"
+        if [ "${{ matrix.platform }}" = "esp32" ]; then
+          fqbn="esp32:esp32:esp32dev"
+        else
+          fqbn="esp8266:esp8266:nodemcuv2"
+        fi
+        arduino-cli compile --fqbn "$fqbn" "$sketch_dir"

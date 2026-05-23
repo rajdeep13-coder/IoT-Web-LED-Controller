@@ -8,7 +8,7 @@ const char* http_password = "YOUR_HTTP_PASSWORD";
 // #define DEBUG
 
 // Semantic version
-#define VERSION "0.1.0"
+#define VERSION "0.1.1"
 
 #ifdef DEBUG
 #define DBG_PRINT(x) Serial.println(x)
